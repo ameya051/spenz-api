@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { AuthService } from '../services/auth.service';
 import { validateRequest } from '../middleware/validate.middleware';
-import { registerSchema, refreshSchema } from '../schemas/auth.schema';
+import { registerSchema, refreshSchema, loginSchema } from '../schemas/auth.schema';
 
 const router = Router();
 const authService = new AuthService();
@@ -32,6 +32,17 @@ router.post('/refresh',
   } catch (error) {
     res.status(401).json({ message: 'Invalid refresh token' });
   }
+});
+
+router.post('/login',
+  validateRequest(loginSchema),
+  async (req, res, next) => {
+    try {
+      const result = await authService.login(req.body);
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
 });
 
 export default router;

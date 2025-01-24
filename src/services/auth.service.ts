@@ -1,7 +1,8 @@
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
-import { RegisterUserDto, AuthResponse } from '../types/auth.types';
+import { RegisterUserDto, AuthResponse, LoginUserDto } from '../types/auth.types';
 import { TokenService } from './token.service';
+import { AppError } from '../errors/AppError';
 
 const prisma = new PrismaClient();
 
@@ -25,7 +26,33 @@ export class AuthService {
       refreshToken,
       user: {
         id: user.id,
-        username: user.username,
+        email: user.email,
+        name: user.name
+      }
+    };
+  }
+
+  async login(credentials: LoginUserDto): Promise<AuthResponse> {
+    const user = await prisma.user.findUnique({
+      where: { email: credentials.email }
+    });
+
+    if (!user) {
+      throw new AppError('Invalid credentials', 401);
+    }
+
+    const validPassword = await bcrypt.compare(credentials.password, user.password);
+    if (!validPassword) {
+      throw new AppError('Invalid credentials', 401);
+    }
+
+    const { accessToken, refreshToken } = this.tokenService.generateTokens(user.id);
+
+    return {
+      accessToken,
+      refreshToken,
+      user: {
+        id: user.id,
         email: user.email,
         name: user.name
       }

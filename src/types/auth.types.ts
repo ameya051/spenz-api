@@ -1,5 +1,4 @@
 export interface RegisterUserDto {
-  username: string;
   email: string;
   name: string;
   password: string;
@@ -10,7 +9,6 @@ export interface AuthResponse {
   refreshToken: string;
   user: {
     id: string;
-    username: string;
     email: string;
     name: string;
   }
@@ -19,4 +17,9 @@ export interface AuthResponse {
 export interface TokenPayload {
   userId: string;
   type: 'access' | 'refresh';
+}
+
+export interface LoginUserDto {
+  email: string;
+  password: string;
 }
