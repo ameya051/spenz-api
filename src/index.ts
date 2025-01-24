@@ -2,6 +2,7 @@ import express from 'express';
 import dotenv from 'dotenv';
 import { errorHandler } from './middleware/errorHandler';
 import { AppError } from './errors/AppError';
+import authRoutes from './routes/auth.routes';
 
 dotenv.config();
 
@@ -9,6 +10,7 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 app.use(express.json());
+app.use('/api/auth', authRoutes);
 
 // Basic health check endpoint
 app.get('/health', (req, res) => {
