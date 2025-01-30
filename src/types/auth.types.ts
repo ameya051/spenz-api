@@ -1,3 +1,8 @@
+export interface LoginUserDto {
+  email: string;
+  password: string;
+}
+
 export interface RegisterUserDto {
   email: string;
   name: string;
@@ -19,7 +24,3 @@ export interface TokenPayload {
   type: 'access' | 'refresh';
 }
 
-export interface LoginUserDto {
-  email: string;
-  password: string;
-}

@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
+import { Request, Response } from 'express';
 import { RegisterUserDto, AuthResponse, LoginUserDto } from '../types/auth.types';
 import { TokenService } from './token.service';
 import { AppError } from '../errors/AppError';
@@ -9,9 +10,16 @@ const prisma = new PrismaClient();
 export class AuthService {
   private tokenService = new TokenService();
 
-  async register(userData: RegisterUserDto): Promise<AuthResponse> {
+  private setTokenCookie(res: Response, token: string) {
+    res.cookie('accessToken', token, {
+      httpOnly: true,
+      maxAge: 10 * 1000 // 10 seconds, change to 15 mins later
+    });
+  }
+
+  async register(userData: RegisterUserDto): Promise<Omit<AuthResponse, 'accessToken' | 'refreshToken'>> {
     const hashedPassword = await bcrypt.hash(userData.password, 10);
-    
+
     const user = await prisma.user.create({
       data: {
         ...userData,
@@ -19,11 +27,7 @@ export class AuthService {
       }
     });
 
-    const { accessToken, refreshToken } = this.tokenService.generateTokens(user.id);
-
     return {
-      accessToken,
-      refreshToken,
       user: {
         id: user.id,
         email: user.email,
@@ -32,7 +36,7 @@ export class AuthService {
     };
   }
 
-  async login(credentials: LoginUserDto): Promise<AuthResponse> {
+  async login(credentials: LoginUserDto, res: Response): Promise<AuthResponse> {
     const user = await prisma.user.findUnique({
       where: { email: credentials.email }
     });
@@ -47,6 +51,8 @@ export class AuthService {
     }
 
     const { accessToken, refreshToken } = this.tokenService.generateTokens(user.id);
+
+    this.setTokenCookie(res, accessToken);
 
     return {
       accessToken,
@@ -63,5 +69,24 @@ export class AuthService {
     const payload = this.tokenService.verifyToken(refreshToken, 'refresh');
     const { accessToken } = this.tokenService.generateTokens(payload.userId);
     return { accessToken };
+  }
+
+  async userInfo(req: Request) {
+    const accessToken = req.cookies.accessToken;
+    if(!accessToken) {
+      throw new AppError('Unauthorized', 401);
+    }
+    const { userId } = this.tokenService.verifyToken(accessToken, 'access');
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    
+    if (!user) {
+      throw new AppError('User not found', 404);
+    }
+
+    return {
+      id: user.id,
+      email: user.email,
+      name: user.name
+    };
   }
 }
